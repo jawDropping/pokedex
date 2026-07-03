@@ -14,7 +14,8 @@ import Grid from './components/PokemonGrid.vue'
 </template>
 
 <style scoped>
-.header {
-    background-color: red;
-  }
+main {
+  padding: 0 1.5rem 0 1.5rem;
+  width: 100vw;
+}
 </style>

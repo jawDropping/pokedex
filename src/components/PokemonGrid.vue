@@ -1,63 +1,51 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-
-interface Pokemon {
-  id: number;
-  name: string;
-  sprites: {front_default: string;};
-  abilities: {ability: {name: string;};}[];
-}
+import { fetchPokemons, type Pokemon} from "@/api/pokemon";
+import PokemonCard from "@/components/Card.vue";
 
 const pokemons = ref<Pokemon[]>([])
+const isLoading = ref(false)
+const error = ref<string | null>(null)
 
-async function getPokemons() {
+async function loadPokemons() {
+  isLoading.value = true;
+  error.value = null;
 
-  const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=1000");
-  const data = await response.json()
-  const pokemonDetails = await Promise.all(
-    
-    data.results.map(
-      async (pokemon: { url: string }) => {
-        const res = await fetch(pokemon.url);
-        return res.json();
-      }
-    )
-  );
-
-  pokemons.value = pokemonDetails;
+  try {
+    const data = await fetchPokemons();
+    pokemons.value = data;
+  } catch (err) {
+    error.value = "Failed to load pokemons.";
+    console.error(err);
+  } finally {
+    isLoading.value = false;
+  }
 }
+onMounted(loadPokemons);
 
-onMounted(getPokemons);
+
 </script>
 
 <template>
-  <div class="pokemon-grid">
-    <div
+  <<div class="pokemon-grid">
+    <PokemonCard
       v-for="pokemon in pokemons"
       :key="pokemon.id"
-      class="card"
-    >
-      <img
-        :src="pokemon.sprites.front_default"
-        :alt="pokemon.name"
-      />
-
-      <h3>{{ pokemon.name }}</h3>
-  
-        <p v-for="ability in pokemon.abilities" :key="ability.ability.name">
-          {{ ability.ability.name }}
-        </p>
-  
-    </div>
+      :pokemon="pokemon"
+    />
   </div>
 </template>
 <style scoped>
   .pokemon-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
   justify-content: center;
-  
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  width: 90%;
+  justify-self: center;
 }
 
 .card {
@@ -66,13 +54,6 @@ onMounted(getPokemons);
   border-radius: 3px;
   text-align: left;
   background-color: #ffffff;
-
-}
-
-.pokemon-grid{
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #333;
 }
 p{
   font-size: 12px;
