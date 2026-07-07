@@ -52,6 +52,7 @@ const search = defineModel<string>("search")
     width: 100%;
 }
 
+/* Responsive Breakpoint for Mobile Devices */
 @media (max-width: 600px) {
     .header-content {
         flex-direction: column;

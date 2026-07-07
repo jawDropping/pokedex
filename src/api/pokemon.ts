@@ -1,9 +1,12 @@
 export interface Pokemon {
     id: number;
     name: string;
+    height: number;
+    weight: number;
     sprites: { front_default: string };
     abilities: { ability: { name: string } }[];
-    isLegendary?: boolean; 
+    types: { slot: number; type: { name: string } }[];
+    stats: { base_stat: number; stat: { name: string } }[];
 }
 
 interface PokemonListResult {
@@ -22,7 +25,10 @@ export interface PaginatedPokemons {
     hasMore: boolean;
 }
 
-// Minimal interface for the species endpoint structure
+export async function fetchPokemonById(id: string | number): Promise<Pokemon> {
+    return fetchFullPokemonData(id);
+}
+
 interface PokemonSpeciesResponse {
     is_legendary: boolean;
 }
@@ -30,9 +36,7 @@ interface PokemonSpeciesResponse {
 const BASE_URL = 'https://pokeapi.co/api/v2/pokemon';
 const SPECIES_BASE_URL = 'https://pokeapi.co/api/v2/pokemon-species';
 
-/**
- * Helper function to orchestrate fetching details and species flags concurrently
- */
+
 async function fetchFullPokemonData(pokemonIdOrUrl: string | number): Promise<Pokemon> {
     let detailUrl = '';
     let id: string | number = '';
@@ -90,7 +94,6 @@ export async function fetchPokemons(limit = 20, offset = 0): Promise<PaginatedPo
     return { pokemons: pokemonDetails, hasMore: data.next !== null };
 }
 
-// Lightweight: just names + urls, no detail fetches. Used to power search.
 export async function fetchAllPokemonNames(): Promise<PokemonListResult[]> {
     const response = await fetch(`${BASE_URL}?limit=2000`);
 

@@ -9,8 +9,9 @@ defineProps<{
   error: string | null;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   (e: "load-more"): void;
+  (e: "view-details", pokemon: Pokemon): void;
 }>();
 </script>
 
@@ -20,6 +21,7 @@ defineEmits<{
       v-for="pokemon in pokemons"
       :key="pokemon.id"
       :pokemon="pokemon"
+      @view-details="emit('view-details', $event)"
     />
   </div>
 

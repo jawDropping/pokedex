@@ -2,7 +2,6 @@
 import { computed } from "vue";
 import type { Pokemon } from "@/api/pokemon";
 
-// Intersect Pokemon interface to safely define types without compilation errors
 type CardPokemon = Pokemon & {
   types?: { slot: number; type: { name: string } }[];
   isLegendary?: boolean;
@@ -12,12 +11,18 @@ const props = defineProps<{
   pokemon: CardPokemon;
 }>();
 
-// 1. Safely grab the primary element type name
+const emit = defineEmits<{
+  (e: "view-details", pokemon: CardPokemon): void;
+}>();
+
+function handleViewClick() {
+  emit("view-details", props.pokemon);
+}
+
 const primaryType = computed(() => {
   return props.pokemon.types?.[0]?.type?.name || "normal";
 });
 
-// 2. Compute dynamic URL path for the elemental SVG icon badge
 const typeIconUrl = computed(() => {
   return `https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${primaryType.value}.svg`;
 });
@@ -69,6 +74,7 @@ const typeIconUrl = computed(() => {
             <span v-for="ability in pokemon.abilities" :key="ability.ability.name" class="ability-pill">
               {{ ability.ability.name }}
             </span>
+            <button class="view-btn" @click.stop="handleViewClick">View</button>
           </div>
         </div>
       </div>
@@ -145,6 +151,49 @@ const typeIconUrl = computed(() => {
   font-weight: 700;
   color: #94a3b8;
   letter-spacing: 1px;
+}
+
+.view-btn {
+  margin-top: 0.5rem;
+  padding: 0.65rem 1.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.3s cubic-bezier(0.15, 0.85, 0.35, 1);
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.view-btn:active {
+  transform: translateY(0);
+}
+
+/* Legendary variant — ties into your existing gold/purple/pink gradient theme */
+.is-legendary .view-btn {
+  background: linear-gradient(90deg, #ffca05, #ff007f, #7000ff);
+  background-size: 200% auto;
+  border: none;
+  color: #0f0c1b;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+  animation: textFlow 4s linear infinite;
+}
+
+.is-legendary .view-btn:hover {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+  transform: translateY(-2px) scale(1.03);
 }
 
 /* --- LIGHT NEUTRAL WRAPPER --- */
