@@ -43,7 +43,7 @@ const emit = defineEmits<{
 <style scoped>
 .pokemon-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   grid-auto-rows: 340px;
   gap: 2.25rem 1.75rem;
   justify-content: center;

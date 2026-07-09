@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Pokemon } from "@/api/pokemon";
+import { fetchPokemonById } from "@/api/pokemon";
 import { computed, ref, onMounted, watch } from "vue";
 
 const props = defineProps<{
@@ -10,13 +11,32 @@ const emit = defineEmits<{
   (e: "close"): void;
 }>();
 
+// Internal, mutable copy of the pokemon being displayed — starts as the
+// prop, but after next/prev it's replaced with freshly fetched data.
+const currentPokemon = ref<Pokemon>(props.pokemon);
+
+// If the parent ever passes a different pokemon prop (e.g. selecting a
+// different card from the grid), sync it back in.
+watch(
+  () => props.pokemon,
+  (newVal) => {
+    currentPokemon.value = newVal;
+  }
+);
+
+const MIN_ID = 1;
+const MAX_ID = 1025; // adjust to match the last ID in your dataset/PokeAPI generation cutoff
+
+const isFetchingAdjacent = ref(false);
+const fetchError = ref<string | null>(null);
+
 // Dynamic accent mapping based on primary type
-const mainType = computed(() => props.pokemon.types[0]?.type.name || "normal");
+const mainType = computed(() => currentPokemon.value.types[0]?.type.name || "normal");
 
 // Game design logic: Determine if this layout gets the ultimate Tier-1 prestige skin
 const legendaryIds = [144, 145, 146, 150, 249, 250, 382, 383, 384, 483, 484, 487, 716, 717, 718, 785, 786, 787, 788, 1007, 1008];
 const isLegendary = computed(() => {
-  return legendaryIds.includes(props.pokemon.id) || (props.pokemon as any).is_legendary === true;
+  return legendaryIds.includes(currentPokemon.value.id) || (currentPokemon.value as any).is_legendary === true;
 });
 
 const formatStatName = (name: string) => {
@@ -31,8 +51,8 @@ const formatStatName = (name: string) => {
   return map[name] || name;
 };
 
-const heightMeters = computed(() => (props.pokemon.height / 10).toFixed(1));
-const weightKg = computed(() => (props.pokemon.weight / 10).toFixed(1));
+const heightMeters = computed(() => (currentPokemon.value.height / 10).toFixed(1));
+const weightKg = computed(() => (currentPokemon.value.weight / 10).toFixed(1));
 
 // --- Field dossier: flavor text pulled from the species endpoint ---
 const description = ref<string | null>(null);
@@ -70,21 +90,15 @@ async function loadDescription(p: Pokemon) {
   }
 }
 
-watch(
-  () => props.pokemon.id,
-  () => loadDescription(props.pokemon),
-  { immediate: true }
-);
-
 // --- Load-in animation: scan reveal + cascading stat count-up ---
 const loaded = ref(false);
-const displayedStats = ref<number[]>(props.pokemon.stats.map(() => 0));
+const displayedStats = ref<number[]>(currentPokemon.value.stats.map(() => 0));
 
 function animateStats() {
   const duration = 800;
   const staggerPerStat = 90;
   const start = performance.now();
-  const targets = props.pokemon.stats.map((s) => s.base_stat);
+  const targets = currentPokemon.value.stats.map((s) => s.base_stat);
   const totalDuration = duration + (targets.length - 1) * staggerPerStat;
 
   function tick(now: number) {
@@ -103,6 +117,65 @@ function animateStats() {
 
   requestAnimationFrame(tick);
 }
+
+// --- Prev/Next navigation + swap animation ---
+const slideDirection = ref<"next" | "prev" | null>(null);
+const isEntering = ref(false);
+const isSwapLocked = ref(false);
+
+const canGoPrev = computed(() => currentPokemon.value.id > MIN_ID);
+const canGoNext = computed(() => currentPokemon.value.id < MAX_ID);
+
+async function goToId(targetId: number, direction: "next" | "prev") {
+  if (isSwapLocked.value) return;
+  if (targetId < MIN_ID || targetId > MAX_ID) return;
+
+  isSwapLocked.value = true;
+  fetchError.value = null;
+
+  try {
+    const fetched = await fetchPokemonById(targetId);
+    currentPokemon.value = fetched;
+    slideDirection.value = direction;
+    playEntranceAnimation();
+  } catch (err) {
+    console.error("Failed to fetch pokemon", targetId, err);
+    fetchError.value = `Couldn't load specimen #${targetId}.`;
+    isSwapLocked.value = false;
+  }
+}
+
+function goNext() {
+  goToId(currentPokemon.value.id + 1, "next");
+}
+
+function goPrev() {
+  goToId(currentPokemon.value.id - 1, "prev");
+}
+
+function playEntranceAnimation() {
+  displayedStats.value = currentPokemon.value.stats.map(() => 0);
+  loaded.value = false;
+  isEntering.value = true;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      isEntering.value = false;
+      loaded.value = true;
+      animateStats();
+      setTimeout(() => {
+        isSwapLocked.value = false;
+        slideDirection.value = null;
+      }, 650);
+    });
+  });
+}
+
+watch(
+  () => currentPokemon.value.id,
+  () => loadDescription(currentPokemon.value),
+  { immediate: true }
+);
 
 onMounted(() => {
   requestAnimationFrame(() => {
@@ -131,7 +204,7 @@ onMounted(() => {
       </button>
       <div class="right-nav">
         <span v-if="isLegendary" class="tier-tag">Legendary specimen</span>
-        <span class="id-watermark">#{{ String(pokemon.id).padStart(3, '0') }}</span>
+        <span class="id-watermark">#{{ String(currentPokemon.id).padStart(3, '0') }}</span>
       </div>
     </nav>
 
@@ -141,7 +214,14 @@ onMounted(() => {
         <div class="grid-texture"></div>
         <div class="ambient-glow"></div>
 
-        <div class="stage">
+        <div
+          class="stage"
+          :class="{
+            'is-entering': isEntering,
+            'slide-next': slideDirection === 'next',
+            'slide-prev': slideDirection === 'prev'
+          }"
+        >
           <div class="stage-frame">
             <span class="frame-tick tick-tl"></span>
             <span class="frame-tick tick-tr"></span>
@@ -168,6 +248,28 @@ onMounted(() => {
       </section>
 
       <section class="info-column">
+        <button
+          class="page-nav nav-prev"
+          @click="goPrev"
+          :disabled="isSwapLocked"
+          aria-label="Previous Pokémon"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="nav-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+
+        <button
+          class="page-nav nav-next"
+          @click="goNext"
+          :disabled="isSwapLocked"
+          aria-label="Next Pokémon"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="nav-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+
         <!-- Sophisticated near-transparent organic seal, bleeding off the top-right corner -->
         <svg class="info-seal" viewBox="0 0 600 600" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
           <path d="M300,40 C420,30 520,110 540,220 C560,330 500,420 400,470 C300,520 180,500 110,420 
@@ -179,11 +281,18 @@ onMounted(() => {
         </svg>
         <span class="info-monogram" aria-hidden="true">{{ String(pokemon.id).padStart(3, '0') }}</span>
 
-        <div class="scroll-content">
+        <div
+          class="scroll-content"
+          :class="{
+            'is-entering': isEntering,
+            'slide-next': slideDirection === 'next',
+            'slide-prev': slideDirection === 'prev'
+          }"
+        >
           <span class="frame-tick corner-tick tick-tl"></span>
           <span class="frame-tick corner-tick tick-br"></span>
 
-          <header class="hero-header">
+          <header class="hero-header" :class="{ 'is-revealed': loaded }">
             <span class="eyebrow">Specimen no. {{ String(pokemon.id).padStart(3, '0') }}</span>
             <h2 class="pokemon-name">{{ pokemon.name }}</h2>
             <div class="type-badges">
@@ -197,7 +306,7 @@ onMounted(() => {
             </div>
           </header>
 
-          <div class="detail-meta">
+          <div class="detail-meta" :class="{ 'is-revealed': loaded }">
             <div class="meta-item">
               <span class="meta-value">{{ heightMeters }}<small>m</small></span>
               <span class="meta-label">Height</span>
@@ -211,7 +320,7 @@ onMounted(() => {
 
           <hr class="section-divider" />
 
-          <div class="info-group dossier-group">
+          <div class="info-group dossier-group" :class="{ 'is-revealed': loaded }">
             <h3>Field dossier</h3>
             <div class="dossier-body">
               <span class="dossier-mark">&#8220;</span>
@@ -232,7 +341,7 @@ onMounted(() => {
 
           <hr class="section-divider" />
 
-          <div class="info-group">
+          <div class="info-group" :class="{ 'is-revealed': loaded }">
             <h3>Intrinsic perks</h3>
             <div class="pill-row">
               <span v-for="a in pokemon.abilities" :key="a.ability.name" class="pill">
@@ -243,7 +352,7 @@ onMounted(() => {
 
           <hr class="section-divider" />
 
-          <div class="info-group">
+          <div class="info-group" :class="{ 'is-revealed': loaded }">
             <h3>Combat analysis</h3>
             <div class="stats-list">
               <div
@@ -345,6 +454,7 @@ onMounted(() => {
 }
 
 .back-btn {
+  position: fixed;
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
@@ -380,7 +490,7 @@ onMounted(() => {
 }
 
 .back-btn .icon { width: 1.1rem; height: 1.1rem; }
-.right-nav { display: flex; align-items: center; gap: 1.5rem; }
+.right-nav { display: flex; align-items: center; gap: 1.5rem; margin-left: auto; color: var(--ink); }
 
 .tier-tag {
   font-family: var(--mono);
@@ -415,9 +525,10 @@ onMounted(() => {
   position: relative;
   background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 38%, #0b0d14) 0%, #0b0d14 100%);
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* CRITICAL: Allows the sticky child to slide down the column */
   justify-content: center;
-  overflow: hidden;
+  padding-top: 90px;       /* Pushes the starting point down so it clears the nav overlay */
+  height: 100%;
 }
 
 .is-legendary-tier .art-column {
@@ -436,7 +547,7 @@ onMounted(() => {
 }
 
 .ambient-glow {
-  position: absolute;
+  position: fixed;
   width: 480px;
   height: 480px;
   z-index: 1;
@@ -445,13 +556,31 @@ onMounted(() => {
 }
 
 .stage {
-  position: relative;
+  position: fixed;
+  top: calc(50vh - (min(68%, 460px) / 2) + 45px); 
   z-index: 2;
   width: min(68%, 460px);
   aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: 0;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* --- Directional swap animation: snap to offset instantly, then release --- */
+.stage.is-entering.slide-next,
+.scroll-content.is-entering.slide-next {
+  transition: none;
+  transform: translateX(36px);
+  opacity: 0;
+}
+.stage.is-entering.slide-prev,
+.scroll-content.is-entering.slide-prev {
+  transition: none;
+  transform: translateX(-36px);
+  opacity: 0;
 }
 
 .stage-frame {
@@ -537,7 +666,7 @@ onMounted(() => {
 .detail-sprite.is-revealed {
   clip-path: inset(0 0 0 0);
   opacity: 1;
-  animation: float-animation 5s ease-in-out infinite;
+  animation: float-animation 2s ease-in-out infinite;
   animation-delay: 1.1s;
 }
 
@@ -571,6 +700,51 @@ onMounted(() => {
   padding: 6rem 5rem 4rem 5rem;
   transition: background 0.3s ease;
 }
+
+/* --- Left/Right page navigation buttons --- */
+.page-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.3s ease;
+}
+
+.page-nav:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+}
+
+.page-nav:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.9);
+}
+
+.page-nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.nav-prev:hover:not(:disabled) { transform: translateY(-50%) translateX(-2px); }
+.nav-next:hover:not(:disabled) { transform: translateY(-50%) translateX(2px); }
+
+.nav-prev { left: 1.75rem; }
+.nav-next { right: 1.75rem; }
+
+.nav-icon { width: 1.3rem; height: 1.3rem; }
 
 /* The sophisticated organic seal — one continuous blot shape, barely visible */
 .info-seal {
@@ -630,6 +804,8 @@ onMounted(() => {
   width: 100%;
   max-width: 520px;
   margin: 0 auto;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Faint corner ticks bracketing the record, echoing the stage-frame on the left */
@@ -643,6 +819,43 @@ onMounted(() => {
 .corner-tick.tick-br { bottom: -1.75rem; right: -1.5rem; }
 
 .hero-header { margin-bottom: 2.25rem; }
+
+/* --- Elegant onload cascade for info-column text --- */
+.hero-header,
+.detail-meta,
+.info-group {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-header.is-revealed,
+.detail-meta.is-revealed,
+.info-group.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger children within the header for a finer cascade */
+.hero-header > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-header.is-revealed > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+.hero-header.is-revealed > .eyebrow      { transition-delay: 0.05s; }
+.hero-header.is-revealed > .pokemon-name { transition-delay: 0.15s; }
+.hero-header.is-revealed > .type-badges  { transition-delay: 0.25s; }
+
+/* Sequence the sections below the header */
+.detail-meta.is-revealed        { transition-delay: 0.35s; }
+.dossier-group.is-revealed      { transition-delay: 0.45s; }
+.info-group.is-revealed:not(.dossier-group) { transition-delay: 0.55s; }
 
 .eyebrow {
   display: inline-block;
@@ -877,7 +1090,13 @@ h3 {
   .stat-row,
   .scan-label,
   .scan-sweep,
-  .dossier-text.is-loading {
+  .dossier-text.is-loading,
+  .hero-header,
+  .hero-header > *,
+  .detail-meta,
+  .info-group,
+  .stage,
+  .scroll-content {
     animation: none !important;
     transition: none !important;
     opacity: 1 !important;
@@ -896,7 +1115,10 @@ h3 {
   .info-monogram { font-size: 7rem; }
   .nav-overlay { padding: 0 1.5rem; }
   .pokemon-name { font-size: 2.6rem; }
-  .stage { width: min(70%, 320px); }
+  .stage { width: min(70%, 320px); margin-top: 0;}
   .quote-mark { font-size: 3.5rem; top: -1.3rem; }
+  .page-nav { width: 40px; height: 40px; }
+  .nav-prev { left: 0.75rem; }
+  .nav-next { right: 0.75rem; }
 }
 </style>

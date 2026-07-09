@@ -460,8 +460,6 @@ function handleBackGifError() {
   text-align: center;
 }
 
-/* Staggered cascade — back content fades and settles in AFTER the card
-   has turned past its midpoint, instead of popping in all at once */
 .back-stagger {
   opacity: 0;
   transform: translateY(10px);
