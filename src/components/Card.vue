@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import type { Pokemon } from "@/api/pokemon";
 
 type CardPokemon = Pokemon & {
@@ -24,8 +24,45 @@ const primaryType = computed(() => {
 });
 
 const typeIconUrl = computed(() => {
-  return `https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${primaryType.value}.svg`;
+  return `https://cdn.jsdelivr.net/gh/duiker101/pokemon-type-svg-icons@master/icons/${primaryType.value}.svg`;
 });
+
+const heightMeters = computed(() => (props.pokemon.height / 10).toFixed(1));
+const weightKg = computed(() => (props.pokemon.weight / 10).toFixed(1));
+
+
+const animatedSpriteUrl = computed(() => {
+  const versions = (props.pokemon.sprites as any)?.versions;
+  const animated = versions?.["generation-v"]?.["black-white"]?.animated?.front_default;
+  return animated || props.pokemon.sprites.front_default;
+});
+
+const backGifSrc = ref("");
+const backGifFallbackAttempted = ref(false);
+
+watch(
+  animatedSpriteUrl,
+  (url) => {
+    backGifFallbackAttempted.value = false;
+    backGifSrc.value = url;
+  },
+  { immediate: true },
+);
+
+function handleBackGifError() {
+  if (backGifFallbackAttempted.value) {
+    return;
+  }
+  backGifFallbackAttempted.value = true;
+
+  const rawFallback = backGifSrc.value.replace(
+    "https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master",
+    "https://raw.githubusercontent.com/PokeAPI/sprites/master",
+  );
+
+  backGifSrc.value =
+    rawFallback !== backGifSrc.value ? rawFallback : props.pokemon.sprites.front_default;
+}
 </script>
 
 <template>
@@ -51,7 +88,7 @@ const typeIconUrl = computed(() => {
             </span>
 
             <div v-else class="element-badge-wrapper">
-              <img :src="typeIconUrl" :alt="primaryType" class="type-icon-img" />
+              <img :src="typeIconUrl" :alt="primaryType" class="type-icon-img" loading="lazy" />
               <span class="element-badge-text">{{ primaryType }}</span>
             </div>
           </div>
@@ -59,7 +96,7 @@ const typeIconUrl = computed(() => {
         </div>
         
         <div class="image-container">
-          <img :src="pokemon.sprites.front_default" :alt="pokemon.name" class="pokemon-sprite" />
+          <img :src="pokemon.sprites.front_default" :alt="pokemon.name" class="pokemon-sprite" loading="lazy" />
         </div>
         
         <div class="card-footer">
@@ -68,15 +105,45 @@ const typeIconUrl = computed(() => {
       </div>
 
       <div class="card card-back">
-        <div class="back-content">
-          <h4>Abilities</h4>
-          <div class="abilities-grid">
-            <span v-for="ability in pokemon.abilities" :key="ability.ability.name" class="ability-pill">
-              {{ ability.ability.name }}
+        <div v-if="pokemon.isLegendary" class="legendary-shimmer"></div>
+
+        <div class="back-header">
+          <span class="back-id">#{{ String(pokemon.id || 0).padStart(3, '0') }}</span>
+          <h3 class="back-name">{{ pokemon.name }}</h3>
+          <div class="back-type-row">
+            <span
+              v-for="t in pokemon.types"
+              :key="t.type.name"
+              class="back-type-pill"
+            >
+              {{ t.type.name }}
             </span>
-            <button class="view-btn" @click.stop="handleViewClick">View</button>
           </div>
         </div>
+
+        <div class="back-gif-wrapper">
+          <div class="back-gif-glow"></div>
+          <img :src="backGifSrc" :alt="`${pokemon.name} animation`" class="back-gif" loading="lazy" @error="handleBackGifError" />
+        </div>
+
+        <div class="overview-stats">
+          <div class="overview-stat">
+            <span class="overview-value">{{ heightMeters }}<small>m</small></span>
+            <span class="overview-label">Height</span>
+          </div>
+          <div class="overview-divider"></div>
+          <div class="overview-stat">
+            <span class="overview-value">{{ weightKg }}<small>kg</small></span>
+            <span class="overview-label">Weight</span>
+          </div>
+        </div>
+
+        <button class="discover-btn" @click.stop="handleViewClick">
+          <span>Catch</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="discover-icon">
+            <path d="M5 12h14M13 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
 
     </div>
@@ -84,7 +151,6 @@ const typeIconUrl = computed(() => {
 </template>
 
 <style scoped>
-/* --- CORE CANVAS & PHYSICS --- */
 .card-flip {
   perspective: 1500px;
   width: 240px;
@@ -151,49 +217,6 @@ const typeIconUrl = computed(() => {
   font-weight: 700;
   color: #94a3b8;
   letter-spacing: 1px;
-}
-
-.view-btn {
-  margin-top: 0.5rem;
-  padding: 0.65rem 1.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e2e8f0;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: all 0.3s cubic-bezier(0.15, 0.85, 0.35, 1);
-}
-
-.view-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-}
-
-.view-btn:active {
-  transform: translateY(0);
-}
-
-/* Legendary variant — ties into your existing gold/purple/pink gradient theme */
-.is-legendary .view-btn {
-  background: linear-gradient(90deg, #ffca05, #ff007f, #7000ff);
-  background-size: 200% auto;
-  border: none;
-  color: #0f0c1b;
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
-  animation: textFlow 4s linear infinite;
-}
-
-.is-legendary .view-btn:hover {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
-  transform: translateY(-2px) scale(1.03);
 }
 
 /* --- LIGHT NEUTRAL WRAPPER --- */
@@ -326,39 +349,192 @@ const typeIconUrl = computed(() => {
 .element-badge-text { color: #64748b; }
 .type-icon-img { filter: invert(49%) sepia(8%) saturate(614%) hue-rotate(177deg) brightness(94%) contrast(89%); }
 
-/* Standard Back Design */
+/* --- Type accent tokens, drive the back panel's colors --- */
+.card-flip { --type-accent: #64748b; }
+.type-fire { --type-accent: #ef4444; }
+.type-water { --type-accent: #3b82f6; }
+.type-grass { --type-accent: #22c55e; }
+.type-electric { --type-accent: #eab308; }
+.type-psychic { --type-accent: #ec4899; }
+.type-ice { --type-accent: #22d3ee; }
+.type-dragon { --type-accent: #6366f1; }
+.type-dark { --type-accent: #64748b; }
+.type-bug { --type-accent: #a3e635; }
+
+/* ==========================================================================
+   CARD BACK — overview panel with animated sprite
+   ========================================================================== */
 .card-back {
   transform: rotateY(180deg);
   background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
 }
 
-.back-content h4 {
-  margin: 0 0 1rem 0;
+.back-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  z-index: 2;
+}
+
+.back-id {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.back-name {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f8fafc;
+  text-transform: capitalize;
+}
+
+.back-type-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.back-type-pill {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--type-accent);
+  background: color-mix(in srgb, var(--type-accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--type-accent) 35%, transparent);
+}
+
+.back-gif-wrapper {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.back-gif-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--type-accent) 30%, transparent) 0%, transparent 70%);
+}
+
+.back-gif {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+}
+
+.overview-stats {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  z-index: 2;
+}
+
+.overview-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.overview-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.overview-value small {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-left: 2px;
+}
+
+.overview-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  margin-top: 0.1rem;
+}
+
+.overview-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.discover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1f5f9;
   font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  color: #64748b;
-  text-align: center;
+  letter-spacing: 1px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: all 0.3s cubic-bezier(0.15, 0.85, 0.35, 1);
+  z-index: 2;
 }
 
-.abilities-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.discover-btn:hover {
+  background: color-mix(in srgb, var(--type-accent) 20%, rgba(255, 255, 255, 0.06));
+  border-color: color-mix(in srgb, var(--type-accent) 55%, transparent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-.ability-pill {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.6rem 1rem;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  color: #e2e8f0;
-  text-transform: capitalize;
-  text-align: center;
+.discover-btn:active {
+  transform: translateY(0);
+}
+
+.discover-icon {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.3s cubic-bezier(0.15, 0.85, 0.35, 1);
+}
+
+.discover-btn:hover .discover-icon {
+  transform: translateX(3px);
+}
+
+/* Legendary variant — ties into your existing gold/purple/pink gradient theme */
+.is-legendary .discover-btn {
+  background: linear-gradient(90deg, #ffca05, #ff007f, #7000ff);
+  background-size: 200% auto;
+  border: none;
+  color: #0f0c1b;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+  animation: textFlow 4s linear infinite;
+}
+
+.is-legendary .discover-btn:hover {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+  transform: translateY(-2px) scale(1.03);
 }
 
 /* ==========================================================================
@@ -438,16 +614,26 @@ const typeIconUrl = computed(() => {
   box-shadow: inset 0 0 30px rgba(168, 85, 247, 0.2);
 }
 
-.is-legendary .card-back h4 {
-  color: #f472b6;
-  text-shadow: 0 0 10px rgba(244, 114, 182, 0.4);
+.is-legendary .back-id {
+  color: rgba(255, 215, 0, 0.4);
 }
 
-.is-legendary .ability-pill {
-  background: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  color: #f8fafc;
-  box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.1);
+.is-legendary .back-name {
+  text-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+}
+
+.is-legendary .back-type-pill {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.08);
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.is-legendary .back-gif {
+  filter: drop-shadow(0 4px 14px rgba(255, 215, 0, 0.35));
+}
+
+.is-legendary .overview-value {
+  color: #ffd700;
 }
 
 .card-flip.is-legendary:hover .card {

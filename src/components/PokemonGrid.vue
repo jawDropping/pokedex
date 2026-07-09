@@ -43,43 +43,40 @@ const emit = defineEmits<{
 <style scoped>
 .pokemon-grid {
   display: grid;
-  /* Fixed: Set minmax width to match the card's width (240px) */
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  
-  /* Fixed: Changed auto-rows to match card height (320px) plus extra padding for rotation */
   grid-auto-rows: 340px;
-  
-  /* Generous gaps give space for the 3D rotation and scale(1.03) effect */
-  gap: 2.5rem 2rem;
-  
+  gap: 2.25rem 1.75rem;
   justify-content: center;
-  justify-items: center; /* Ensures cards stay centered inside their respective tracks */
+  justify-items: center;
   width: 100%;
-  max-width: 1200px; /* Constrains layout on ultra-wide screens */
-  margin: 2rem auto 4rem auto;
+  margin: 2.5rem auto 3rem;
 }
 
 .load-more-wrapper {
   display: flex;
   justify-content: center;
-  margin-bottom: 4rem;
+  margin-bottom: 3rem;
 }
 
 .load-more-btn {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: 8px;
-  background-color: #1e293b; /* Matches modern card dark aesthetic */
-  color: #fff;
+  padding: 0.7rem 2.1rem;
+  border: 1px solid rgba(32, 30, 27, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: #201e1b;
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .load-more-btn:hover:not(:disabled) {
-  background-color: #0f172a;
+  background: #201e1b;
+  color: #f6f3ee;
+  border-color: #201e1b;
   transform: translateY(-1px);
 }
 
@@ -88,20 +85,23 @@ const emit = defineEmits<{
 }
 
 .load-more-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
 .no-more-text {
-  color: #64748b;
-  font-size: 0.95rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: #948d7e;
 }
 
 .error {
   text-align: center;
-  color: #dc2626;
+  font-family: 'JetBrains Mono', monospace;
+  color: #b3543f;
   font-weight: 600;
   margin: 2rem 0;
+  font-size: 0.85rem;
 }
 </style>

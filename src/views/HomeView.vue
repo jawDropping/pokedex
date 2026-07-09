@@ -54,8 +54,6 @@ async function loadMore() {
 
 let searchDebounceTimer: ReturnType<typeof setTimeout>;
 watch(search, (term) => {
-  // If the user starts typing while viewing a details page, bring them
-  // back so they can actually see the filtered results.
   if (term && route.name !== 'home') {
     router.push({ name: 'home' });
   }
@@ -94,25 +92,156 @@ onMounted(async () => {
 const displayedPokemons = computed(() => {
   return search.value ? searchResults.value : pokemons.value;
 })
+
+const archiveStatus = computed(() => {
+  if (search.value) {
+    if (isSearching.value) return 'Searching the archive…';
+    const n = searchResults.value.length;
+    if (n === 0) return `No specimens match “${search.value}”`;
+    return `${n} match${n === 1 ? '' : 'es'} for “${search.value}”`;
+  }
+  return `${pokemons.value.length} specimen${pokemons.value.length === 1 ? '' : 's'} catalogued`;
+})
 </script>
 
 <template>
   <main>
-    <Grid
-      :pokemons="displayedPokemons"
-      :is-loading="search ? isSearching : isLoading"
-      :has-more="search ? false : hasMore"
-      :error="error"
-      @load-more="loadMore"
-      @view-details="openDetails"
-    />
+    <section class="archive-hero">
+      <span class="hero-eyebrow">Field Archive · Vol. I</span>
+      <h1 class="hero-title">Every specimen, <br /><em>catalogued in full.</em></h1>
+      <div class="hero-meta">
+        <span class="hero-status">{{ archiveStatus }}</span>
+        <span class="meta-dot">·</span>
+        <span class="hero-live"><span class="pulse"></span>Live index</span>
+      </div>
+    </section>
+
+    <div class="hero-hairline"></div>
+
+    <div class="grid-wrap">
+      <Grid
+        :pokemons="displayedPokemons"
+        :is-loading="search ? isSearching : isLoading"
+        :has-more="search ? false : hasMore"
+        :error="error"
+        @load-more="loadMore"
+        @view-details="openDetails"
+      />
+    </div>
   </main>
 </template>
 
 <style scoped>
 main {
-  padding: 0 1.5rem 0 1.5rem;
+  --paper: #f6f3ee;
+  --ink: #201e1b;
+  --ink-muted: #948d7e;
+  --hairline: rgba(32, 30, 27, 0.1);
+  --brass: #a68a5c;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --display: 'Fraunces', ui-serif, Georgia, serif;
+
+  display: block;
   width: 100vw;
-  margin-top: 10px
+  padding: 0 clamp(1.25rem, 4vw, 3rem) 4rem;
+}
+
+.archive-hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 0 2rem;
+  animation: riseIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-eyebrow {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brass);
+  margin-bottom: 0.9rem;
+}
+
+.hero-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 4.4vw, 3.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 0 0 1.4rem 0;
+}
+
+.hero-title em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+.meta-dot {
+  opacity: 0.5;
+}
+
+.hero-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.pulse {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brass);
+  box-shadow: 0 0 6px rgba(166, 138, 92, 0.5);
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+.hero-hairline {
+  max-width: 1200px;
+  margin: 0 auto;
+  border-top: 1px dashed var(--hairline);
+}
+
+.grid-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  animation: riseIn 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.08s;
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-hero, .grid-wrap, .pulse {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-title br { display: none; }
 }
 </style>

@@ -1,92 +1,97 @@
-/* color palette from <https://github.com/vuejs/theme> */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+/* High-End Laboratory Light Palette Variables */
 :root {
-  --vt-c-white: #252020;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
+  /* Core Base Neutrals — Cool Slate & Frosted Glass */
+  --vt-c-white: #ffffff;        /* Pure white (allows your 0.75 opacity cards to read as glass) */
+  --vt-c-white-soft: #f1f5f9;   /* PERFECT HARMONY: Matches your card badges, allows glass to pop, ultra-soft on eyes */
+  --vt-c-white-mute: #e2e8f0;   /* Soft structural gray for hover states and borders */
 
-  --vt-c-black: #e6dcdc;
-  --vt-c-black-soft: #f7efef;
-  --vt-c-black-mute: #282828;
+  /* Harmonized Typographic Ink — Matched to your Card Text (#1e293b) */
+  --vt-c-black: #0f172a;        /* Deep slate for ultra-high contrast moments */
+  --vt-c-black-soft: #1e293b;   /* Slate-800: Exact match to your .pokemon-name class */
+  --vt-c-black-mute: #334155;   /* Mid-tone slate */
 
-  --vt-c-indigo: #2c3e50;
+  /* Identity Accents */
+  --vt-c-tech-blue: #3b82f6;    /* Matches your Water-type blue for a cohesive system accent */
 
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
+  /* Micro-Fine Dividers mapped to the Slate palette */
+  --vt-c-divider-light-1: rgba(30, 41, 59, 0.12);
+  --vt-c-divider-light-2: rgba(30, 41, 59, 0.06);
+  --vt-c-divider-dark-1: rgba(241, 245, 249, 0.15);
+  --vt-c-divider-dark-2: rgba(241, 245, 249, 0.06);
 
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
+  /* Anti-Fatigue Text Hierarchies */
+  --vt-c-text-light-1: var(--vt-c-black-soft); /* #1e293b — keeps all global headings identical to card headers */
+  --vt-c-text-light-2: #64748b;                /* #64748b — exact match to your fallback .element-badge-text */
+  --vt-c-text-dark-1: #f8fafc;
+  --vt-c-text-dark-2: #94a3b8;                 /* Exact match to your .action-hint */
 }
 
-/* semantic color variables for this project */
+/* Semantic Assignments */
 :root {
   --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
+  --color-background-soft: var(--vt-c-white-soft); /* This becomes your soothing body background */
   --color-background-mute: var(--vt-c-white-mute);
 
   --color-border: var(--vt-c-divider-light-2);
   --color-border-hover: var(--vt-c-divider-light-1);
 
   --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
+  --color-text: var(--vt-c-text-light-2);
+  --color-accent: var(--vt-c-tech-blue);
 
-  --section-gap: 160px;
+  --section-gap: 120px;
 }
-
+/* Smooth system configuration mapping for dark mode environments if preferred */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
+    --color-background: #0c0d10;
+    --color-background-soft: #13151a;
+    --color-background-mute: #1a1d24;
 
     --color-border: var(--vt-c-divider-dark-2);
     --color-border-hover: var(--vt-c-divider-dark-1);
 
     --color-heading: var(--vt-c-text-dark-1);
     --color-text: var(--vt-c-text-dark-2);
+    --color-accent: #3b82f6;
   }
 }
 
+/* Master Normalization Resets */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   margin: 0;
-  font-weight: normal;
+  padding: 0;
 }
 
+/* Core Document Body Architecture */
 body {
   min-height: 100vh;
   color: var(--color-text);
-  background: #f7efef;
-  transition:
-    color 0.5s,
-    background-color 0.5s;
-  line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
+  background-color: var(--vt-c-white-soft); /* Using the softer grey base background to protect eye strain */
+  line-height: 1.5;
+  
+  /* Upgraded typography to fit an editorial luxury look */
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 15px;
+  
+  /* Hardware accelerated text smoothing */
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  overflow-x: hidden;
+  transition: color 0.5s ease, background-color 0.5s ease;
 }
+
+/* Global Application Layout Wrapper Framework */
 #app {
   display: flex;
   flex-direction: column;
-  place-items: center;
   min-height: 100vh;
+  width: 100%;
 }
