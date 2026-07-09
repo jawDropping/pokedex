@@ -73,6 +73,9 @@ function handleBackGifError() {
       `type-${primaryType}`
     ]"
   >
+    <!-- Ground shadow — lifts and softens as the card turns -->
+    <div class="card-shadow"></div>
+
     <div class="card-inner">
       
       <div class="card card-front">
@@ -107,7 +110,7 @@ function handleBackGifError() {
       <div class="card card-back">
         <div v-if="pokemon.isLegendary" class="legendary-shimmer"></div>
 
-        <div class="back-header">
+        <div class="back-header back-stagger">
           <span class="back-id">#{{ String(pokemon.id || 0).padStart(3, '0') }}</span>
           <h3 class="back-name">{{ pokemon.name }}</h3>
           <div class="back-type-row">
@@ -121,12 +124,12 @@ function handleBackGifError() {
           </div>
         </div>
 
-        <div class="back-gif-wrapper">
+        <div class="back-gif-wrapper back-stagger">
           <div class="back-gif-glow"></div>
           <img :src="backGifSrc" :alt="`${pokemon.name} animation`" class="back-gif" loading="lazy" @error="handleBackGifError" />
         </div>
 
-        <div class="overview-stats">
+        <div class="overview-stats back-stagger">
           <div class="overview-stat">
             <span class="overview-value">{{ heightMeters }}<small>m</small></span>
             <span class="overview-label">Height</span>
@@ -138,7 +141,7 @@ function handleBackGifError() {
           </div>
         </div>
 
-        <button class="discover-btn" @click.stop="handleViewClick">
+        <button class="discover-btn back-stagger" @click.stop="handleViewClick">
           <span>Catch</span>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="discover-icon">
             <path d="M5 12h14M13 5l7 7-7 7" />
@@ -147,12 +150,15 @@ function handleBackGifError() {
       </div>
 
     </div>
+
+    <!-- Light sheen — sweeps across independent of the 3D rotation -->
+    <div class="sheen" aria-hidden="true"></div>
   </div>
 </template>
 
 <style scoped>
 .card-flip {
-  perspective: 1500px;
+  perspective: 2200px;
   width: 240px;
   height: 320px;
   cursor: pointer;
@@ -164,16 +170,87 @@ function handleBackGifError() {
   z-index: 10;
 }
 
+/* ==========================================================================
+   GROUND SHADOW — the card "lifts" off the surface as it turns
+   ========================================================================== */
+.card-shadow {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -14px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(15, 23, 42, 0.22) 0%, transparent 72%);
+  filter: blur(6px);
+  opacity: 0.5;
+  transform: scale(0.88) translateY(0);
+  transition: opacity 0.95s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card-flip:hover .card-shadow {
+  opacity: 0.85;
+  transform: scale(1.04) translateY(6px);
+}
+
+/* ==========================================================================
+   LIGHT SHEEN — a soft diagonal highlight that passes over the card as
+   it rotates, independent of the 3D transform (sits flat above everything)
+   ========================================================================== */
+.sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  pointer-events: none;
+  z-index: 20;
+  overflow: hidden;
+}
+
+.sheen::after {
+  content: '';
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: -30%;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 48%,
+    transparent 100%
+  );
+  transform: translateX(-40%) skewX(-14deg);
+  opacity: 0;
+  mix-blend-mode: overlay;
+}
+
+.card-flip:hover .sheen::after {
+  animation: sheenPass 1.05s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sheenPass {
+  0%   { transform: translateX(-40%) skewX(-14deg); opacity: 0; }
+  30%  { opacity: 0.9; }
+  55%  { opacity: 0.35; }
+  100% { transform: translateX(340%) skewX(-14deg); opacity: 0; }
+}
+
+/* ==========================================================================
+   THE FLIP ITSELF — spring-weighted rotation, gentle lift, subtle depth
+   ========================================================================== */
 .card-inner {
   position: relative;
   width: 100%;
   height: 100%;
-  transition: transform 0.7s cubic-bezier(0.15, 0.85, 0.35, 1);
   transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.95s cubic-bezier(0.34, 1.35, 0.64, 1);
 }
 
 .card-flip:hover .card-inner {
-  transform: rotateY(180deg) scale(1.06);
+  transform: translateY(-8px) rotateY(180deg);
 }
 
 /* --- STANDARD GLASS BASE --- */
@@ -183,6 +260,7 @@ function handleBackGifError() {
   padding: 1.5rem;
   border-radius: 22px;
   backface-visibility: hidden;
+  transform-style: preserve-3d;
   display: flex;
   flex-direction: column;
   background: rgba(255, 255, 255, 0.75);
@@ -191,7 +269,11 @@ function handleBackGifError() {
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.15, 0.85, 0.35, 1);
+  transition: box-shadow 0.6s ease;
+}
+
+.card-flip:hover .card {
+  box-shadow: 0 26px 46px rgba(0, 0, 0, 0.14);
 }
 
 .card-front {
@@ -199,10 +281,13 @@ function handleBackGifError() {
   align-items: center;
 }
 
+/* Subtle Z-depth layering on the front face — closer elements sit
+   nearer the viewer, giving the card real dimensionality at rest */
 .card-header {
   text-align: center;
   z-index: 5;
   width: 100%;
+  transform: translateZ(18px);
 }
 
 .header-left {
@@ -260,13 +345,14 @@ function handleBackGifError() {
   align-items: center;
   justify-content: center;
   flex: 1;
+  transform: translateZ(34px);
 }
 
 .pokemon-sprite {
   width: 130px;
   height: 130px;
   object-fit: contain;
-  transition: transform 0.4s cubic-bezier(0.15, 0.85, 0.35, 1);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .card-flip:hover .pokemon-sprite {
@@ -275,6 +361,7 @@ function handleBackGifError() {
 
 .card-footer {
   z-index: 5;
+  transform: translateZ(12px);
 }
 
 .action-hint {
@@ -372,6 +459,19 @@ function handleBackGifError() {
   align-items: center;
   text-align: center;
 }
+
+/* Staggered cascade — back content fades and settles in AFTER the card
+   has turned past its midpoint, instead of popping in all at once */
+.back-stagger {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.card-flip:hover .back-header.back-stagger { transition-delay: 0.3s; opacity: 1; transform: none; }
+.card-flip:hover .back-gif-wrapper.back-stagger { transition-delay: 0.4s; opacity: 1; transform: none; }
+.card-flip:hover .overview-stats.back-stagger { transition-delay: 0.55s; opacity: 1; transform: none; }
+.card-flip:hover .discover-btn.back-stagger { transition-delay: 0.72s; opacity: 1; transform: none; }
 
 .back-header {
   display: flex;
@@ -486,6 +586,7 @@ function handleBackGifError() {
   align-items: center;
   gap: 0.5rem;
   padding: 0.7rem 1.4rem;
+  margin-top: 7px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
@@ -497,7 +598,11 @@ function handleBackGifError() {
   cursor: pointer;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  transition: all 0.3s cubic-bezier(0.15, 0.85, 0.35, 1);
+  transition: background 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.5s ease, translate 0.5s ease;
   z-index: 2;
 }
 
@@ -654,5 +759,24 @@ function handleBackGifError() {
 @keyframes textFlow {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .card-inner,
+  .card-shadow,
+  .pokemon-sprite,
+  .sheen::after,
+  .back-stagger {
+    transition: none !important;
+    animation: none !important;
+  }
+  .card-flip:hover .card-inner {
+    transform: rotateY(180deg);
+  }
+  .back-stagger {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 </style>
