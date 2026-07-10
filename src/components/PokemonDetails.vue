@@ -232,13 +232,12 @@ onMounted(() => {
           <span class="scan-label" :class="{ 'is-visible': loaded }">Analyzing specimen</span>
 
           <div class="artwork-wrapper">
-            <h1 class="giant-bg-text">{{ pokemon.name }}</h1>
+            <h1 class="giant-bg-text">{{ currentPokemon.name }}</h1>
             <img 
-              :src="(pokemon.sprites as any).other?.['official-artwork']?.front_default || pokemon.sprites.front_default" 
-              :alt="pokemon.name" 
+              :src="(currentPokemon.sprites as any).other?.['official-artwork']?.front_default || currentPokemon.sprites.front_default" 
+              :alt="currentPokemon.name" 
               class="detail-sprite"
-              :class="{ 'is-revealed': loaded
-              }"
+              :class="{ 'is-revealed': loaded }"
               loading="lazy"
             />
           </div>
@@ -251,7 +250,7 @@ onMounted(() => {
         <button
           class="page-nav nav-prev"
           @click="goPrev"
-          :disabled="isSwapLocked"
+          :disabled="isSwapLocked || !canGoPrev"
           aria-label="Previous Pokémon"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="nav-icon">
@@ -262,7 +261,7 @@ onMounted(() => {
         <button
           class="page-nav nav-next"
           @click="goNext"
-          :disabled="isSwapLocked"
+          :disabled="isSwapLocked || !canGoNext"
           aria-label="Next Pokémon"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="nav-icon">
@@ -270,7 +269,6 @@ onMounted(() => {
           </svg>
         </button>
 
-        <!-- Sophisticated near-transparent organic seal, bleeding off the top-right corner -->
         <svg class="info-seal" viewBox="0 0 600 600" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
           <path d="M300,40 C420,30 520,110 540,220 C560,330 500,420 400,470 C300,520 180,500 110,420 
                    C40,340 50,220 120,140 C180,70 240,50 300,40 Z" />
@@ -279,7 +277,7 @@ onMounted(() => {
           <circle cx="200" cy="200" r="176" />
           <circle cx="200" cy="200" r="124" />
         </svg>
-        <span class="info-monogram" aria-hidden="true">{{ String(pokemon.id).padStart(3, '0') }}</span>
+        <span class="info-monogram" aria-hidden="true">{{ String(currentPokemon.id).padStart(3, '0') }}</span>
 
         <div
           class="scroll-content"
@@ -293,11 +291,11 @@ onMounted(() => {
           <span class="frame-tick corner-tick tick-br"></span>
 
           <header class="hero-header" :class="{ 'is-revealed': loaded }">
-            <span class="eyebrow">Specimen no. {{ String(pokemon.id).padStart(3, '0') }}</span>
-            <h2 class="pokemon-name">{{ pokemon.name }}</h2>
+            <span class="eyebrow">Specimen no. {{ String(currentPokemon.id).padStart(3, '0') }}</span>
+            <h2 class="pokemon-name">{{ currentPokemon.name }}</h2>
             <div class="type-badges">
               <span
-                v-for="t in pokemon.types"
+                v-for="t in currentPokemon.types"
                 :key="t.type.name"
                 class="type-badge"
               >
@@ -344,7 +342,7 @@ onMounted(() => {
           <div class="info-group" :class="{ 'is-revealed': loaded }">
             <h3>Intrinsic perks</h3>
             <div class="pill-row">
-              <span v-for="a in pokemon.abilities" :key="a.ability.name" class="pill">
+              <span v-for="a in currentPokemon.abilities" :key="a.ability.name" class="pill">
                 {{ a.ability.name.replace('-', ' ') }}
               </span>
             </div>
@@ -356,7 +354,7 @@ onMounted(() => {
             <h3>Combat analysis</h3>
             <div class="stats-list">
               <div
-                v-for="(s, i) in pokemon.stats"
+                v-for="(s, i) in currentPokemon.stats"
                 :key="s.stat.name"
                 class="stat-row"
                 :class="{ 'is-revealed': loaded }"
@@ -367,7 +365,7 @@ onMounted(() => {
                 <div class="stat-bar-track">
                   <div
                     class="stat-bar-fill"
-                    :style="{ width: Math.min(displayedStats[i]?? 150) / 150 * 100 + '%' }"
+                    :style="{ width: Math.min(displayedStats[i] ?? 150, 150) / 150 * 100 + '%' }"
                   ></div>
                 </div>
               </div>
@@ -704,7 +702,7 @@ onMounted(() => {
 /* --- Left/Right page navigation buttons --- */
 .page-nav {
   position: absolute;
-  top: 50%;
+  top:380px;
   transform: translateY(-50%);
   z-index: 5;
   width: 48px;
@@ -1115,9 +1113,10 @@ h3 {
   .info-monogram { font-size: 7rem; }
   .nav-overlay { padding: 0 1.5rem; }
   .pokemon-name { font-size: 2.6rem; }
-  .stage { width: min(70%, 320px); margin-top: 0;}
+  .stage { width: min(70%, 320px); margin-top: 0; position: relative; top: -50px;}
+  .back-btn{position: relative;}
   .quote-mark { font-size: 3.5rem; top: -1.3rem; }
-  .page-nav { width: 40px; height: 40px; }
+  .page-nav { width: 40px; height: 40px; top: 10px }
   .nav-prev { left: 0.75rem; }
   .nav-next { right: 0.75rem; }
 }
